@@ -67,13 +67,31 @@ Auth settings for faster dev testing. Uses the new `sb_publishable_` key; worked
 to `localhost:3000` which a phone can't open, but the account is confirmed anyway — see
 `supabase/README.md` "Email confirmation" for turning it off in dev.)
 
-### [ ] Phase 3 · Data layer (offline-first)  — *Opus · high*  ⭐ backbone
+### [x] Phase 3 · Data layer (offline-first)  — *Opus · high*  ⭐ backbone  ✅ DONE
 **Depends on:** 0, 1, 2.
 - Room: `TaskEntity`, `CompletionEntity`, `DailyNoteEntity`, `NoteImageEntity`; DAOs; `java.time` TypeConverters; `DopaPatchDb`.
 - Supabase DTOs + entity⇄dto mappers.
 - `TaskRepository` / `NoteRepository`: expose `Flow` **from Room**; write local first, mark dirty.
 - `SyncManager` (WorkManager): pull rows changed since `lastSyncAt`, push dirty rows, honor soft-delete (`deleted_at`), last-write-wins on `updated_at`. Trigger on app open + periodic.
 **Done when:** create a task offline, it appears from Room instantly; on reconnect it lands in Supabase; a row changed in Supabase shows up locally after sync. Leave a unit test for the mappers + a merge/conflict self-check.
+**Handoff note:** Deps added — Room `2.7.1` (+KSP applied), `postgrest-kt`, WorkManager `2.10.0`,
+kotlin-serialization plugin. **⚠️ `gradle.properties` now sets `android.disallowKotlinSourceSets=false`**
+— required for KSP's generated sources under AGP 9 built-in Kotlin; don't remove it.
+Layout: `data/local` (entities/daos/`Converters`/`DopaPatchDb`, java.time↔primitive converters,
+`exportSchema=false`), `data/remote` (`Dtos` snake_case @Serializable + `Mappers` — timestamps
+parsed via `OffsetDateTime` since PG sends offsets), `data/repository` (`TaskRepository`,
+`NoteRepository` — Flow from Room, every write stamps `updatedAt=now`+`dirty=true`),
+`data/sync` (`Merge.shouldApplyRemote` pure LWW, `SyncManager` push-then-pull for **tasks +
+daily_notes**, `SyncPrefs` SharedPreferences cursor, `SyncWorker` one-time on open + 15-min periodic).
+`AppContainer` now takes `Context`, installs `Postgrest`, owns db/repos/syncManager; `DopaPatchApp`
+schedules sync on launch. **Sync entities `TaskEntity`/`DailyNoteEntity` carry `dirty`/`deletedAt`;
+`upsert(...).toDto()` stamps `userId` for RLS on push.**
+**Deferred (ponytail, wired when their feature lands):** completion sync → Phase 4/5 (needs
+ToggleCompletion + a tombstone since `task_completions` has no server soft-delete), note_images
+sync → Phase 8. Cursor is a single client clock (skew risk noted in code; overlap re-pulls are idempotent).
+**Verified:** `:app:testDebugUnitTest` green — mapper round-trips (task+note, incl. soft-delete)
+and LWW `shouldApplyRemote` (strictly-newer / tie / null-local). **Not device-verified by me**
+(no emulator): the offline-create → reconnect → lands-in-Supabase round trip is yours to run.
 
 ### [ ] Phase 4 · Domain: recurrence + time-blocks  — *Opus · high*
 **Depends on:** 3.
