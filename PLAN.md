@@ -180,9 +180,19 @@ Reschedule hooked into `DayViewModel.save`/`delete` + `SyncWorker` (after sync) 
 `DopaPatchApp` ensures the channel. Manifest: POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED,
 SCHEDULE_EXACT_ALARM (31-32) + **USE_EXACT_ALARM** (auto-grants exactness 33+, so no settings dance)
 + both receivers. `DayScreen` requests POST_NOTIFICATIONS once on 33+.
-**Ceilings (ponytail):** heads-up notif (not full-screen — no USE_FULL_SCREEN_INTENT); inexact
-fallback if exact somehow denied. **⚠️ Not device-verified by me** (no device/reboot here): the
-fires-at-time / survives-reboot / cancels-on-delete-or-complete checks are yours to run.
+**Ceilings (ponytail):** inexact fallback if exact somehow denied.
+**Upgraded to a REAL alarm (user request):** notification-only wasn't wanted. Now `AlarmReceiver`
+FIRE just starts foreground **`AlarmService`**, which **loops the alarm ringtone (`USAGE_ALARM`
+MediaPlayer) + vibrates** until dismissed and posts a **full-screen-intent** notification opening
+**`AlarmActivity`** over the lock screen (`setShowWhenLocked`/`setTurnScreenOn`) with Done/Snooze.
+Sound plays in any lock state because the service owns it. Done/Snooze (activity buttons or notif
+actions) route to the service → stop sound, `markDone`/`snooze(+10m)`, `stopSelf`. Channel is
+`IMPORTANCE_HIGH` but **silent** (service does audio, avoids double sound). Manifest: added
+USE_FULL_SCREEN_INTENT, FOREGROUND_SERVICE(+SPECIAL_USE), VIBRATE; `AlarmActivity` (showWhenLocked,
+singleInstance) + `AlarmService` (`foregroundServiceType=specialUse`, subtype "alarm").
+**⚠️ Not device-verified by me** (no device/reboot here): fires-and-rings / over-lock-screen /
+survives-reboot / cancels-on-delete-or-complete are yours to run. On Android 14+ full-screen-intent
+may need the per-app toggle if the system doesn't auto-grant it to this exact-alarm app.
 
 ### [ ] Phase 8 · Daily note editor  — *Opus · high*
 **Depends on:** 3.
