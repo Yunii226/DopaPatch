@@ -47,12 +47,24 @@ verification snippet. **⚠️ User action still required:** create the Supabase
 the script, and fill `SUPABASE_URL`/`SUPABASE_ANON_KEY` in `local.properties` — an agent
 can't provision the backend. Phase 2 (auth) needs those keys populated.
 
-### [ ] Phase 2 · Auth  — *Sonnet · medium*
+### [x] Phase 2 · Auth  — *Sonnet · medium*  ✅ DONE
 **Depends on:** 0, 1.
 - Supabase email/password auth via `auth-kt`; persist session; auto-login on relaunch.
 - Sign-in / sign-up screen; sign-out in a stub settings menu.
 - Gate the app: no session ⇒ auth screen, else main.
 **Done when:** you can sign up, kill the app, reopen, and still be logged in.
+**Handoff note:** Deps added to catalog — `supabase-bom 3.1.4`, `auth-kt`, `ktor-client-okhttp 3.1.1`;
+`INTERNET` perm added. `AppContainer.supabase` (lazy, guarded by `config.isBackendConfigured`)
+installs `Auth` — session **auto-persists to SharedPreferences + auto-refreshes** (no manual
+session manager). `ui/auth/AuthViewModel` + `AuthScreen` do email/password sign-in/up (handles
+email-confirmation-on = "check your email"). `MainActivity.DopaPatchRoot` gates on
+`auth.sessionStatus`: Initializing→spinner, Authenticated→`MainScreen` (placeholder + **Sign out**
+in the top bar = the stub settings menu), else→`AuthScreen`. `HomeViewModel` now holds
+`userEmail`+`signOut()`. **⚠️ If your Supabase project requires email confirmation**, sign-up
+won't create a live session until you click the emailed link — disable confirmation in
+Auth settings for faster dev testing. Uses the new `sb_publishable_` key; worked fine.
+**Not yet device-verified** by me (no emulator here) — the "kill & reopen still logged in"
+check is on you.
 
 ### [ ] Phase 3 · Data layer (offline-first)  — *Opus · high*  ⭐ backbone
 **Depends on:** 0, 1, 2.
