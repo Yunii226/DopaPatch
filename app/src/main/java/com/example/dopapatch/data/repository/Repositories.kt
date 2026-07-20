@@ -71,6 +71,23 @@ class CompletionRepository(
             else -> dao.upsert(existing.copy(deleted = true, dirty = true, completedAt = now))
         }
     }
+
+    /** Ensure done (idempotent) — used by the alarm's "Done" action, which must never un-check. */
+    suspend fun markDone(taskId: String, date: LocalDate) {
+        val now = Instant.now()
+        val existing = dao.get(taskId, date)
+        when {
+            existing == null -> dao.upsert(
+                CompletionEntity(
+                    id = UUID.randomUUID().toString(), taskId = taskId,
+                    userId = currentUserId().orEmpty(), occurredOn = date,
+                    completedAt = now, dirty = true, deleted = false,
+                )
+            )
+            existing.deleted -> dao.upsert(existing.copy(deleted = false, dirty = true, completedAt = now))
+            else -> Unit // already done
+        }
+    }
 }
 
 class NoteRepository(

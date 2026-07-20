@@ -17,6 +17,10 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE dirty = 1")
     suspend fun getDirty(): List<TaskEntity>
 
+    /** Alarm-eligible tasks (has a time, alarm on, not deleted) — for (re)scheduling. */
+    @Query("SELECT * FROM tasks WHERE deletedAt IS NULL AND alarmEnabled = 1 AND scheduledTime IS NOT NULL")
+    suspend fun alarmTasks(): List<TaskEntity>
+
     @Upsert suspend fun upsert(task: TaskEntity)
     @Upsert suspend fun upsertAll(tasks: List<TaskEntity>)
 }

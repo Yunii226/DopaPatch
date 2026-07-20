@@ -17,7 +17,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     override suspend fun doWork(): Result {
         val container = (applicationContext as DopaPatchApp).container
         return container.syncManager.sync().fold(
-            onSuccess = { Result.success() },
+            onSuccess = { container.rescheduleAlarms(); Result.success() }, // remote changes may add alarm tasks
             onFailure = { Result.retry() },
         )
     }

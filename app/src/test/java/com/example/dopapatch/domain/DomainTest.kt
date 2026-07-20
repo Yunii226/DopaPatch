@@ -1,6 +1,7 @@
 package com.example.dopapatch.domain
 
 import com.example.dopapatch.data.local.TaskEntity
+import com.example.dopapatch.domain.alarm.nextOccurrence
 import com.example.dopapatch.domain.model.KIND_EVENT
 import com.example.dopapatch.domain.model.KIND_RECURRENT
 import com.example.dopapatch.domain.model.buildDayTasks
@@ -11,11 +12,13 @@ import com.example.dopapatch.domain.timeblock.TimeBlock
 import com.example.dopapatch.domain.timeblock.TimeBlocks
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 class DomainTest {
@@ -97,6 +100,28 @@ class DomainTest {
         assertEquals(setOf(DayOfWeek.MONDAY, DayOfWeek.FRIDAY), p.weekdays)
         assertEquals(LocalDate.of(2026, 8, 1), p.until)
         assertEquals(3, com.example.dopapatch.domain.recurrence.parseRrule("FREQ=DAILY;INTERVAL=3").interval)
+    }
+
+    // ---------- alarm next-occurrence ----------
+    @Test fun next_occurrence_event_only_in_future() {
+        val at9 = LocalTime.of(9, 0)
+        val e = task("ev", KIND_EVENT, scheduledDate = start, time = at9)
+        assertEquals(LocalDateTime.of(start, at9), nextOccurrence(e, LocalDateTime.of(start, LocalTime.of(8, 0))))
+        assertNull(nextOccurrence(e, LocalDateTime.of(start, LocalTime.of(10, 0)))) // past → none
+    }
+
+    @Test fun next_occurrence_recurrent_picks_next_day_when_time_passed() {
+        val at9 = LocalTime.of(9, 0)
+        val t = task("rc", KIND_RECURRENT, rrule = "FREQ=DAILY", dtstart = start, time = at9)
+        // before 9am today → today 9:00
+        assertEquals(LocalDateTime.of(start, at9), nextOccurrence(t, LocalDateTime.of(start, LocalTime.of(7, 0))))
+        // after 9am today → tomorrow 9:00
+        assertEquals(LocalDateTime.of(start.plusDays(1), at9), nextOccurrence(t, LocalDateTime.of(start, LocalTime.of(9, 30))))
+    }
+
+    @Test fun next_occurrence_null_without_time() {
+        val t = task("nt", KIND_RECURRENT, rrule = "FREQ=DAILY", dtstart = start, time = null)
+        assertNull(nextOccurrence(t, LocalDateTime.of(start, LocalTime.of(0, 0))))
     }
 
     // ---------- time-blocks ----------

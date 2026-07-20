@@ -41,6 +41,7 @@ class DayViewModel(
     private val toggleCompletion: ToggleCompletion,
     private val tasks: TaskRepository,
     private val sync: SyncManager,
+    private val rescheduleAlarms: suspend () -> Unit,
 ) : ViewModel() {
 
     private val date = MutableStateFlow(LocalDate.now())
@@ -67,11 +68,11 @@ class DayViewModel(
     }
 
     fun delete(taskId: String) = viewModelScope.launch {
-        tasks.softDelete(taskId); syncQuietly()
+        tasks.softDelete(taskId); rescheduleAlarms(); syncQuietly()
     }
 
     fun save(task: TaskEntity) = viewModelScope.launch {
-        tasks.save(task); syncQuietly()
+        tasks.save(task); rescheduleAlarms(); syncQuietly()
     }
 
     private fun syncQuietly() = viewModelScope.launch(Dispatchers.IO) { sync.sync() }
@@ -80,7 +81,7 @@ class DayViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val c = (this[APPLICATION_KEY] as DopaPatchApp).container
-                DayViewModel(c.getTasksForDate, c.toggleCompletion, c.taskRepository, c.syncManager)
+                DayViewModel(c.getTasksForDate, c.toggleCompletion, c.taskRepository, c.syncManager, c::rescheduleAlarms)
             }
         }
     }

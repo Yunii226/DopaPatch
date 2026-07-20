@@ -2,6 +2,7 @@ package com.example.dopapatch.di
 
 import android.content.Context
 import com.example.dopapatch.BuildConfig
+import com.example.dopapatch.data.alarm.AlarmScheduler
 import com.example.dopapatch.data.local.DopaPatchDb
 import com.example.dopapatch.data.repository.CompletionRepository
 import com.example.dopapatch.data.repository.NoteRepository
@@ -61,5 +62,15 @@ class AppContainer(context: Context) {
 
     val syncManager by lazy {
         SyncManager(supabase, db, SyncPrefs(appContext), ::currentUserId)
+    }
+
+    val alarmScheduler by lazy { AlarmScheduler(appContext) }
+
+    /** (Re)schedule every alarm-enabled task — after edits, sync, or reboot. */
+    suspend fun rescheduleAlarms() = alarmScheduler.scheduleAll(db.taskDao().alarmTasks())
+
+    /** Schedule the next occurrence of one task (used after an alarm fires). */
+    suspend fun rescheduleTask(taskId: String) {
+        db.taskDao().getById(taskId)?.let { alarmScheduler.schedule(it) }
     }
 }

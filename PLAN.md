@@ -162,12 +162,27 @@ timeline placement/now-line + tab + date paging are yours to eyeball.
 
 ## Later increments — Phases 7–13
 
-### [ ] Phase 7 · Alarms  — *Opus · high*
+### [x] Phase 7 · Alarms  — *Opus · high*  ✅ DONE (needs on-device verify)
 **Depends on:** 5.
 - Schedule `setExactAndAllowWhileIdle` for events/occurrences with a `scheduled_time` + alarm enabled; notification channel; full-screen or heads-up notification with "Done"/"Snooze".
 - `SCHEDULE_EXACT_ALARM`/`USE_EXACT_ALARM` + `POST_NOTIFICATIONS` perms with runtime request + rationale.
 - `BOOT_COMPLETED` receiver reschedules; reschedule on task edit/sync.
 **Done when:** an event fires at its time, survives reboot, and cancels when the task is deleted/completed.
+**Handoff note:** Pure `domain/alarm/nextOccurrence(task, from)` (event once; recurrent via RRULE,
+366-day horizon) — 3 unit tests. `data/alarm/`: `AlarmScheduler` (one alarm per task keyed by
+`id.hashCode()`; `setExactAndAllowWhileIdle`, inexact fallback when `!canExact()`; `schedule`/
+`scheduleAll`/`snooze`/`cancel`), `Notifications` (high-importance channel, heads-up notif with
+Done/Snooze `PendingIntent`s, POST_NOTIFICATIONS-gated), `AlarmReceiver` (FIRE→notify+reschedule
+next; DONE→`markDone`+cancel+sync; SNOOZE→+10min; `goAsync`+IO coroutine), `BootReceiver`
+(BOOT_COMPLETED→`rescheduleAlarms`). `CompletionRepository.markDone` (idempotent, never un-checks).
+`TaskDao.alarmTasks()`. `AppContainer.alarmScheduler`/`rescheduleAlarms`/`rescheduleTask`.
+Reschedule hooked into `DayViewModel.save`/`delete` + `SyncWorker` (after sync) + boot;
+`DopaPatchApp` ensures the channel. Manifest: POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED,
+SCHEDULE_EXACT_ALARM (31-32) + **USE_EXACT_ALARM** (auto-grants exactness 33+, so no settings dance)
++ both receivers. `DayScreen` requests POST_NOTIFICATIONS once on 33+.
+**Ceilings (ponytail):** heads-up notif (not full-screen — no USE_FULL_SCREEN_INTENT); inexact
+fallback if exact somehow denied. **⚠️ Not device-verified by me** (no device/reboot here): the
+fires-at-time / survives-reboot / cancels-on-delete-or-complete checks are yours to run.
 
 ### [ ] Phase 8 · Daily note editor  — *Opus · high*
 **Depends on:** 3.
