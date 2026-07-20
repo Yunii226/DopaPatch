@@ -21,11 +21,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-data class ChecklistUiState(
+/** Backs both the Checklist and Time-blocks views for the selected [date]. */
+data class DayUiState(
     val date: LocalDate = LocalDate.now(),
+    val all: List<DayTask> = emptyList(),
     val recurrent: List<DayTask> = emptyList(),
     val events: List<DayTask> = emptyList(),
     val doneCount: Int = 0,
@@ -33,27 +36,31 @@ data class ChecklistUiState(
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class ChecklistViewModel(
+class DayViewModel(
     private val getTasksForDate: GetTasksForDate,
     private val toggleCompletion: ToggleCompletion,
     private val tasks: TaskRepository,
     private val sync: SyncManager,
 ) : ViewModel() {
 
-    // Phase 5 is "today"; a date selector arrives in Phase 6.
     private val date = MutableStateFlow(LocalDate.now())
 
     val uiState = date
         .flatMapLatest { d -> getTasksForDate(d).map { list -> toUi(d, list) } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChecklistUiState())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DayUiState())
 
-    private fun toUi(d: LocalDate, list: List<DayTask>) = ChecklistUiState(
+    private fun toUi(d: LocalDate, list: List<DayTask>) = DayUiState(
         date = d,
+        all = list,
         recurrent = list.filter { it.task.kind == KIND_RECURRENT },
         events = list.filter { it.task.kind == KIND_EVENT },
         doneCount = list.count { it.done },
         totalCount = list.size,
     )
+
+    fun prevDay() = date.update { it.minusDays(1) }
+    fun nextDay() = date.update { it.plusDays(1) }
+    fun goToday() { date.value = LocalDate.now() }
 
     fun toggle(taskId: String) = viewModelScope.launch {
         toggleCompletion(taskId, date.value); syncQuietly()
@@ -67,14 +74,13 @@ class ChecklistViewModel(
         tasks.save(task); syncQuietly()
     }
 
-    /** Fire-and-forget push/pull; SyncManager swallows offline errors. */
     private fun syncQuietly() = viewModelScope.launch(Dispatchers.IO) { sync.sync() }
 
     companion object {
         val Factory = viewModelFactory {
             initializer {
                 val c = (this[APPLICATION_KEY] as DopaPatchApp).container
-                ChecklistViewModel(c.getTasksForDate, c.toggleCompletion, c.taskRepository, c.syncManager)
+                DayViewModel(c.getTasksForDate, c.toggleCompletion, c.taskRepository, c.syncManager)
             }
         }
     }

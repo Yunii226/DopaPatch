@@ -134,13 +134,24 @@ authenticated branch = `ChecklistScreen` (sign-out moved into its top bar); plac
 flow is yours to run. Note: minSdk-24 `DatePicker`/`TimePicker` + swipe use one deprecated-but-working
 `confirmValueChange` callback (kept deliberately — replacement is far more code).
 
-### [ ] Phase 6 · Time-blocks view  — *Sonnet · medium*
+### [x] Phase 6 · Time-blocks view  — *Sonnet · medium*  ✅ DONE
 **Depends on:** 4, 5.
 - Same day's tasks grouped by `TimeBlock` (Anytime, Morning…Night), each block a labeled section with its tasks; **current block highlighted**; tap a task to edit; check to complete.
 - Top-level tab/nav switch between Checklist and Time-blocks (+ date selector for the day).
 **Done when:** a task at 09:00 shows under Morning, an untimed task under Anytime, and the block containing `now` is visually marked.
+**Handoff note:** Refactored the single-screen checklist into a shared parent + stateless bodies.
+`ChecklistViewModel` → **`DayViewModel`** (adds `date` nav: `prevDay`/`nextDay`/`goToday`, and
+`all` to `DayUiState`; drives both views). `DayScreen` = the top-level Scaffold: `TabRow`
+(Checklist | Time-blocks), a `DateBar` (‹ / Today-or-date / ›), shared FAB + `AddEditTaskSheet`,
+sign-out. `ChecklistBody` (was ChecklistScreen; two sections + swipe-delete) and new
+`TimeBlocksBody` (groups `ui.all` by block in Anytime→Night order, skips empty blocks, marks the
+block containing *now* with a filled primaryContainer header + "· now" — only when viewing today)
+share `TaskRowContent`. `MainActivity` → `DayScreen`. **Verified:** build + 12 unit tests green
+(`timeBlockOf` boundaries already covered in Phase 4). **Not device-verified by me:** the
+09:00→Morning / untimed→Anytime / now-highlight visuals + tab + date paging are yours to eyeball.
 
 > **🎯 MVP complete after Phase 6.** App is usable daily: add habits/events, see them by time-block or checklist, check them off, synced across devices.
+> ✅ **MVP DONE** — Phases 0–6 all shipped, build green, on-device checklist confirmed by user.
 
 ---
 

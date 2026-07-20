@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.dopapatch.ui.auth.AuthScreen
-import com.example.dopapatch.ui.checklist.ChecklistScreen
+import com.example.dopapatch.ui.checklist.DayScreen
 import com.example.dopapatch.ui.home.HomeViewModel
 import com.example.dopapatch.ui.theme.DopaPatchTheme
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -66,5 +66,5 @@ private fun Loading() {
 
 @Composable
 private fun MainScreen(vm: HomeViewModel = viewModel(factory = HomeViewModel.Factory)) {
-    ChecklistScreen(onSignOut = { vm.signOut() })
+    DayScreen(onSignOut = { vm.signOut() })
 }
