@@ -78,10 +78,13 @@ alter table task_completions enable row level security;
 alter table daily_notes      enable row level security;
 alter table note_images      enable row level security;
 
+-- drop-then-create so re-running this script is idempotent (Postgres has no
+-- `create policy if not exists`).
 do $$
 declare t text;
 begin
   foreach t in array array['tasks','task_completions','daily_notes','note_images'] loop
+    execute format('drop policy if exists %1$s_owner on %1$s;', t);
     execute format($p$
       create policy %1$s_owner on %1$s
         for all to authenticated
@@ -91,7 +94,17 @@ begin
   end loop;
 end $$;
 
--- ---------- Storage bucket ----------
--- Create bucket 'note-images' (private) in the dashboard, then add a Storage policy
--- restricting objects to a per-user prefix, e.g. path like: <user_id>/<note_id>/<file>.
--- Policy (Storage > Policies): (bucket_id = 'note-images' and (storage.foldername(name))[1] = auth.uid()::text)
+-- ---------- Storage bucket 'note-images' (private, per-user prefix) ----------
+-- Object path convention: <user_id>/<note_id>/<file>. RLS keys off the first
+-- path segment so a user only touches their own folder.
+insert into storage.buckets (id, name, public)
+  values ('note-images', 'note-images', false)
+  on conflict (id) do nothing;
+
+drop policy if exists note_images_owner on storage.objects;
+create policy note_images_owner on storage.objects
+  for all to authenticated
+  using (bucket_id = 'note-images'
+         and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'note-images'
+         and (storage.foldername(name))[1] = auth.uid()::text);

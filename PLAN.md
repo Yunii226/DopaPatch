@@ -34,12 +34,18 @@ Done in this repo:
 - **Hilt does NOT work with AGP 9** (google/dagger#4944 — "Android BaseExtension not found"). Use the manual `AppContainer` pattern; don't reintroduce Hilt/Dagger.
 **Handoff note:** placeholder `ui/home/HomeScreen` + `HomeViewModel` are throwaway — Phase 2/5 replace them with real auth-gated nav.
 
-### [ ] Phase 1 · Supabase backend  — *Sonnet · medium* (or user-run)
+### [x] Phase 1 · Supabase backend  — *Sonnet · medium* (or user-run)  ✅ ARTIFACTS DONE
 **Depends on:** 0.
 - Apply `supabase/schema.sql` (tables, RLS, `updated_at` triggers) in the Supabase SQL editor.
 - Create Storage bucket `note-images` (private) with per-user RLS.
 - Document in `supabase/README.md`: creating the project, where the URL + anon key go.
 **Done when:** schema applied, a manually-inserted row is only visible to its owner.
+**Handoff note:** `schema.sql` now creates the `note-images` bucket + `note_images_owner`
+policy in SQL too (no dashboard clicking) and is idempotent (drop-then-create policies,
+`on conflict do nothing` bucket). `supabase/README.md` has the full setup + an RLS
+verification snippet. **⚠️ User action still required:** create the Supabase project, run
+the script, and fill `SUPABASE_URL`/`SUPABASE_ANON_KEY` in `local.properties` — an agent
+can't provision the backend. Phase 2 (auth) needs those keys populated.
 
 ### [ ] Phase 2 · Auth  — *Sonnet · medium*
 **Depends on:** 0, 1.
