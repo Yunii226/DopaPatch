@@ -1,10 +1,13 @@
 package com.example.dopapatch.data.repository
 
+import com.example.dopapatch.data.local.CompletionDao
+import com.example.dopapatch.data.local.CompletionEntity
 import com.example.dopapatch.data.local.DailyNoteDao
 import com.example.dopapatch.data.local.DailyNoteEntity
 import com.example.dopapatch.data.local.TaskDao
 import com.example.dopapatch.data.local.TaskEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -37,6 +40,36 @@ class TaskRepository(
         val t = dao.getById(id) ?: return
         val now = Instant.now()
         dao.upsert(t.copy(deletedAt = now, updatedAt = now, dirty = true))
+    }
+}
+
+/**
+ * Completion is per-(task, day). Toggling checks by inserting a row and un-checks by flipping a
+ * local `deleted` tombstone (server `task_completions` has no soft-delete, so an offline un-check
+ * still needs something to push). ponytail: completion network sync lands in Phase 5.
+ */
+class CompletionRepository(
+    private val dao: CompletionDao,
+    private val currentUserId: () -> String?,
+) {
+    /** Task ids completed on [date]. */
+    fun observeDoneIds(date: LocalDate): Flow<Set<String>> =
+        dao.observeByDate(date).map { rows -> rows.map { it.taskId }.toSet() }
+
+    suspend fun toggle(taskId: String, date: LocalDate) {
+        val now = Instant.now()
+        val existing = dao.get(taskId, date)
+        when {
+            existing == null -> dao.upsert(
+                CompletionEntity(
+                    id = UUID.randomUUID().toString(), taskId = taskId,
+                    userId = currentUserId().orEmpty(), occurredOn = date,
+                    completedAt = now, dirty = true, deleted = false,
+                )
+            )
+            existing.deleted -> dao.upsert(existing.copy(deleted = false, dirty = true, completedAt = now))
+            else -> dao.upsert(existing.copy(deleted = true, dirty = true, completedAt = now))
+        }
     }
 }
 

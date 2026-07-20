@@ -93,12 +93,24 @@ sync → Phase 8. Cursor is a single client clock (skew risk noted in code; over
 and LWW `shouldApplyRemote` (strictly-newer / tie / null-local). **Not device-verified by me**
 (no emulator): the offline-create → reconnect → lands-in-Supabase round trip is yours to run.
 
-### [ ] Phase 4 · Domain: recurrence + time-blocks  — *Opus · high*
+### [x] Phase 4 · Domain: recurrence + time-blocks  — *Opus · high*  ✅ DONE
 **Depends on:** 3.
 - `RecurrenceExpander` using `lib-recur`: given a task's `rrule`+`dtstart` and a date (or range), return occurrences. Pure Kotlin.
 - `TimeBlock` enum + `timeBlockOf(LocalTime?)` using the constant boundaries from `CLAUDE.md`.
 - Use cases: `GetTasksForDate(date)` (recurrent occurrences + events, joined with completions) and `ToggleCompletion(taskId, date)`.
 **Done when:** unit tests cover: daily/weekly/interval/until RRULEs, an event on its date only, and toggling completion for one day not affecting another.
+**Handoff note:** Dep `org.dmfs:lib-recur:0.16.0`. Pure domain under `domain/`:
+`recurrence/RecurrenceExpander` (`occursOn`/`occurrences`, lib-recur `DateTime` months are 0-based,
+iteration capped at 10k, bad RRULE → false so the checklist can't crash), `timeblock/TimeBlock`+
+`TimeBlocks.of` (boundaries constant, `<` comparisons: 00–05 Night/05–12 Morning/12–17 Afternoon/
+17–21 Evening/21–24 Night), `model/DayTasks` (`DayTask`, `activeOn`, pure `buildDayTasks` join —
+reuses `TaskEntity`, no separate domain model; `KIND_RECURRENT`/`KIND_EVENT` consts).
+Use cases in `domain/usecase/UseCases`: `GetTasksForDate` combines task Flow + completion Flow;
+`ToggleCompletion` → `CompletionRepository.toggle` (insert / revive-or-tombstone by flipping
+`deleted`+`dirty`). `AppContainer` exposes `completionRepository`, `getTasksForDate`, `toggleCompletion`.
+**⚠️ Completion network sync still deferred to Phase 5** — toggles write local dirty rows ready to push.
+**Verified:** `:app:testDebugUnitTest` green — 7 domain tests (daily/weekly-BYDAY/interval/until,
+event-only-on-date, per-day completion independence, time-block boundaries).
 
 ### [ ] Phase 5 · Checklist view  — *Sonnet · medium* (RRULE picker: *Opus · high*)
 **Depends on:** 3, 4.

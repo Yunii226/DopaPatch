@@ -3,10 +3,13 @@ package com.example.dopapatch.di
 import android.content.Context
 import com.example.dopapatch.BuildConfig
 import com.example.dopapatch.data.local.DopaPatchDb
+import com.example.dopapatch.data.repository.CompletionRepository
 import com.example.dopapatch.data.repository.NoteRepository
 import com.example.dopapatch.data.repository.TaskRepository
 import com.example.dopapatch.data.sync.SyncManager
 import com.example.dopapatch.data.sync.SyncPrefs
+import com.example.dopapatch.domain.usecase.GetTasksForDate
+import com.example.dopapatch.domain.usecase.ToggleCompletion
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.createSupabaseClient
@@ -51,6 +54,10 @@ class AppContainer(context: Context) {
 
     val taskRepository by lazy { TaskRepository(db.taskDao(), ::currentUserId) }
     val noteRepository by lazy { NoteRepository(db.dailyNoteDao(), ::currentUserId) }
+    val completionRepository by lazy { CompletionRepository(db.completionDao(), ::currentUserId) }
+
+    val getTasksForDate by lazy { GetTasksForDate(taskRepository, completionRepository) }
+    val toggleCompletion by lazy { ToggleCompletion(completionRepository) }
 
     val syncManager by lazy {
         SyncManager(supabase, db, SyncPrefs(appContext), ::currentUserId)
