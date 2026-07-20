@@ -143,12 +143,17 @@ flow is yours to run. Note: minSdk-24 `DatePicker`/`TimePicker` + swipe use one 
 `ChecklistViewModel` → **`DayViewModel`** (adds `date` nav: `prevDay`/`nextDay`/`goToday`, and
 `all` to `DayUiState`; drives both views). `DayScreen` = the top-level Scaffold: `TabRow`
 (Checklist | Time-blocks), a `DateBar` (‹ / Today-or-date / ›), shared FAB + `AddEditTaskSheet`,
-sign-out. `ChecklistBody` (was ChecklistScreen; two sections + swipe-delete) and new
-`TimeBlocksBody` (groups `ui.all` by block in Anytime→Night order, skips empty blocks, marks the
-block containing *now* with a filled primaryContainer header + "· now" — only when viewing today)
-share `TaskRowContent`. `MainActivity` → `DayScreen`. **Verified:** build + 12 unit tests green
-(`timeBlockOf` boundaries already covered in Phase 4). **Not device-verified by me:** the
-09:00→Morning / untimed→Anytime / now-highlight visuals + tab + date paging are yours to eyeball.
+sign-out. `ChecklistBody` (was ChecklistScreen; two sections + swipe-delete) and `TimeBlocksBody` share
+`TaskRowContent`. `MainActivity` → `DayScreen`.
+**Time-blocks redesigned (user request) → Google-Calendar day view:** `TimeBlocksBody` now renders
+an **all-day strip** (untimed tasks as toggle `FilterChip`s) over a **scrollable 24h hour grid**
+(`HOUR_HEIGHT`/`LABEL_WIDTH` constants); timed tasks are `Surface` blocks positioned by
+`offset(y = HOUR_HEIGHT * startMin/60)`, height ∝ `durationMin` (default 60, min 46dp), tap-to-edit
+with an inner `Checkbox`; a red **now-line** and auto-scroll-to-now show only when viewing today.
+ponytail: overlapping tasks stack (no column-splitting) — fine for a personal app. The old
+Anytime→Night bucket grouping is gone; `TimeBlocks.of` still backs any future use.
+**Verified:** build green; 12 unit tests unaffected (UI-only change). **Not device-verified by me:**
+timeline placement/now-line + tab + date paging are yours to eyeball.
 
 > **🎯 MVP complete after Phase 6.** App is usable daily: add habits/events, see them by time-block or checklist, check them off, synced across devices.
 > ✅ **MVP DONE** — Phases 0–6 all shipped, build green, on-device checklist confirmed by user.
