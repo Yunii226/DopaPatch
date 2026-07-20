@@ -2,6 +2,7 @@ package com.example.dopapatch.data.sync
 
 import android.content.Context
 import com.example.dopapatch.data.local.DopaPatchDb
+import com.example.dopapatch.data.remote.CompletionDto
 import com.example.dopapatch.data.remote.DailyNoteDto
 import com.example.dopapatch.data.remote.TaskDto
 import com.example.dopapatch.data.remote.toDto
@@ -19,11 +20,13 @@ class SyncPrefs(context: Context) {
 }
 
 /**
- * Offline-first two-way sync for the LWW-soft-delete tables (tasks, daily_notes):
- * push dirty rows up, pull rows changed since the cursor, resolve by [shouldApplyRemote].
- * ponytail: completions + note_images sync deferred to Phase 4/5 & 8 when those features
- * write them; ponytail: single client-clock cursor (skew risk) — overlap re-pulls are
- * idempotent, upgrade to a server-time cursor only if drift bites.
+ * Offline-first two-way sync. Tasks + daily_notes use LWW soft-delete (push dirty, pull changed
+ * since cursor, resolve by [shouldApplyRemote]). Completions have no server soft-delete, so they
+ * sync as insert/delete via a local `deleted` tombstone.
+ * ponytail: note_images sync deferred to Phase 8; single client-clock cursor (skew risk) —
+ * overlap re-pulls are idempotent, upgrade to a server-time cursor only if drift bites.
+ * ponytail: cross-device offline un-check of a completion won't propagate (no server tombstone) —
+ * fine for a 1-2 device personal app; revisit if it bites.
  */
 class SyncManager(
     private val supabase: SupabaseClient,
@@ -36,8 +39,8 @@ class SyncManager(
         val start = Instant.now()
         val since = prefs.lastSyncAt().toString()
 
-        pushTasks(uid); pushNotes(uid)
-        pullTasks(since); pullNotes(since)
+        pushTasks(uid); pushNotes(uid); pushCompletions(uid)
+        pullTasks(since); pullNotes(since); pullCompletions(since)
 
         prefs.setLastSyncAt(start)
     }
@@ -74,5 +77,35 @@ class SyncManager(
         val apply = remotes.map { it.toEntity() }
             .filter { shouldApplyRemote(dao.getById(it.id)?.updatedAt, it.updatedAt) }
         if (apply.isNotEmpty()) dao.upsertAll(apply)
+    }
+
+    private suspend fun pushCompletions(uid: String) {
+        val dao = db.completionDao()
+        for (c in dao.getDirty()) {
+            if (c.deleted) {
+                supabase.from("task_completions").delete { filter { eq("id", c.id) } }
+                dao.deleteById(c.id) // tombstone pushed — drop it locally
+            } else {
+                supabase.from("task_completions").upsert(c.copy(userId = uid).toDto())
+                dao.upsert(c.copy(userId = uid, dirty = false))
+            }
+        }
+    }
+
+    private suspend fun pullCompletions(since: String) {
+        val remotes = supabase.from("task_completions")
+            .select { filter { gt("completed_at", since) } }
+            .decodeList<CompletionDto>()
+        val dao = db.completionDao()
+        for (dto in remotes) {
+            val e = dto.toEntity()
+            val local = dao.get(e.taskId, e.occurredOn)
+            when {
+                local == null -> dao.upsert(e)
+                local.dirty -> Unit // local edit wins; it'll be pushed next round
+                local.id != e.id -> { dao.deleteById(local.id); dao.upsert(e) } // reconcile id clash on unique(task,day)
+                else -> dao.upsert(e)
+            }
+        }
     }
 }

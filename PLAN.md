@@ -112,12 +112,27 @@ Use cases in `domain/usecase/UseCases`: `GetTasksForDate` combines task Flow + c
 **Verified:** `:app:testDebugUnitTest` green — 7 domain tests (daily/weekly-BYDAY/interval/until,
 event-only-on-date, per-day completion independence, time-block boundaries).
 
-### [ ] Phase 5 · Checklist view  — *Sonnet · medium* (RRULE picker: *Opus · high*)
+### [x] Phase 5 · Checklist view  — *Sonnet · medium* (RRULE picker: *Opus · high*)  ✅ DONE
 **Depends on:** 3, 4.
 - Screen with two sections — **Recurrent** and **Added** — checkboxes call `ToggleCompletion`, completed items get struck-through/dimmed, live day counter ("3/8 done").
 - FAB → Add/Edit Task sheet: title, description, kind, date/time, alarm toggle (stored, wired in Phase 7), and a **basic RRULE builder** (daily / weekly-by-weekday / every-N + optional end date) that emits an RFC-5545 string.
 - Swipe-to-delete (soft delete) + edit.
 **Done when:** you can add a recurring habit and a one-off event, they appear in the right sections for the right days, and checking persists across relaunch + sync.
+**Handoff note:** `ui/checklist/` — `ChecklistViewModel` (StateFlow from `GetTasksForDate`, splits
+Recurrent/Added, done/total counts; toggle/save/delete each fire a quiet `syncManager.sync()`),
+`ChecklistScreen` (two `LazyColumn` sections, counter in the top bar, `SwipeToDismissBox`
+end→start = soft delete, tap row = edit, FAB = add, empty state), `AddEditTaskSheet`
+(`ModalBottomSheet` form: title/description, Recurring↔One-off segmented, `DatePicker`/`TimePicker`
+dialogs, alarm switch gated on a time, and the `RecurrenceEditor`). Builder logic is pure in
+`domain/recurrence/RruleBuilder` — `buildRrule(type,weekdays,interval,until)` emits RFC-5545,
+`parseRrule` seeds the editor when editing (round-trips its own output). **Completion network sync
+now wired** into `SyncManager` (push dirty: upsert or delete-by-tombstone; pull by `completed_at`,
+reconciling id clashes on unique(task,day)); `CompletionDao.getDirty` added. `MainActivity`
+authenticated branch = `ChecklistScreen` (sign-out moved into its top bar); placeholder `MainScreen` gone.
+**Verified:** `:app:testDebugUnitTest` green — 12 tests (added rrule build + parse round-trip).
+**Not device-verified by me:** the add-habit/add-event → right sections → check-persists-across-relaunch+sync
+flow is yours to run. Note: minSdk-24 `DatePicker`/`TimePicker` + swipe use one deprecated-but-working
+`confirmValueChange` callback (kept deliberately — replacement is far more code).
 
 ### [ ] Phase 6 · Time-blocks view  — *Sonnet · medium*
 **Depends on:** 4, 5.

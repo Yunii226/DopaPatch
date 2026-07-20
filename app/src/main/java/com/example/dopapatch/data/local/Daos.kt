@@ -47,6 +47,9 @@ interface CompletionDao {
     @Query("SELECT * FROM task_completions WHERE taskId = :taskId AND occurredOn = :date")
     suspend fun get(taskId: String, date: LocalDate): CompletionEntity?
 
+    @Query("SELECT * FROM task_completions WHERE dirty = 1")
+    suspend fun getDirty(): List<CompletionEntity>
+
     @Upsert suspend fun upsert(c: CompletionEntity)
     @Query("DELETE FROM task_completions WHERE id = :id") suspend fun deleteById(id: String)
 }

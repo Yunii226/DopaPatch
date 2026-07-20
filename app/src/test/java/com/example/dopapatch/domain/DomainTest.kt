@@ -5,12 +5,15 @@ import com.example.dopapatch.domain.model.KIND_EVENT
 import com.example.dopapatch.domain.model.KIND_RECURRENT
 import com.example.dopapatch.domain.model.buildDayTasks
 import com.example.dopapatch.domain.recurrence.RecurrenceExpander
+import com.example.dopapatch.domain.recurrence.RecurrenceType
+import com.example.dopapatch.domain.recurrence.buildRrule
 import com.example.dopapatch.domain.timeblock.TimeBlock
 import com.example.dopapatch.domain.timeblock.TimeBlocks
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -69,6 +72,31 @@ class DomainTest {
         val tuesday = buildDayTasks(listOf(t), doneTaskIds = emptySet(), date = start.plusDays(1))
         assertTrue("done Monday", monday.single().done)
         assertFalse("not done Tuesday", tuesday.single().done)
+    }
+
+    // ---------- rrule builder (round-trips through the expander) ----------
+    @Test fun builder_emits_valid_rrules() {
+        assertEquals("FREQ=DAILY", buildRrule(RecurrenceType.DAILY))
+        assertEquals(
+            "FREQ=WEEKLY;BYDAY=MO,WE",
+            buildRrule(RecurrenceType.WEEKLY, weekdays = setOf(DayOfWeek.WEDNESDAY, DayOfWeek.MONDAY)),
+        )
+        assertEquals("FREQ=DAILY;INTERVAL=3", buildRrule(RecurrenceType.EVERY_N, interval = 3))
+        assertEquals(
+            "FREQ=DAILY;UNTIL=20260722",
+            buildRrule(RecurrenceType.DAILY, until = LocalDate.of(2026, 7, 22)),
+        )
+        // emitted string actually expands the way the builder intends
+        assertTrue(RecurrenceExpander.occursOn(buildRrule(RecurrenceType.EVERY_N, interval = 2), start, start.plusDays(2)))
+    }
+
+    @Test fun builder_roundtrips_through_parse() {
+        val weekly = buildRrule(RecurrenceType.WEEKLY, setOf(DayOfWeek.MONDAY, DayOfWeek.FRIDAY), until = LocalDate.of(2026, 8, 1))
+        val p = com.example.dopapatch.domain.recurrence.parseRrule(weekly)
+        assertEquals(RecurrenceType.WEEKLY, p.type)
+        assertEquals(setOf(DayOfWeek.MONDAY, DayOfWeek.FRIDAY), p.weekdays)
+        assertEquals(LocalDate.of(2026, 8, 1), p.until)
+        assertEquals(3, com.example.dopapatch.domain.recurrence.parseRrule("FREQ=DAILY;INTERVAL=3").interval)
     }
 
     // ---------- time-blocks ----------
