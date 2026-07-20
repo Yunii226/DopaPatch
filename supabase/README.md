@@ -50,6 +50,14 @@ reset request.jwt.claims;
 Deleting the task afterward: `delete from tasks where title = 'test habit';` (run with
 claims reset, or as the service role, since RLS now blocks anonymous deletes).
 
+## Email confirmation (dev gotcha)
+By default the email provider requires confirmation, and the confirmation link redirects to
+the project **Site URL** (`http://localhost:3000`), which a phone can't open — you'll see a
+"can't reach" page. The email is still confirmed server-side, so you can just go back to the
+app and sign in. For this single-user app the simplest setup is to **turn confirmation off**:
+Authentication → Providers → Email → **Confirm email: off** → Save. (Keeping it on needs a
+real Site URL / deep link, which isn't worth it here.)
+
 ## Notes
 - Storage object paths are `<user_id>/<note_id>/<file>`; the `note_images_owner` policy
   keys off the first path segment, so users only touch their own folder.

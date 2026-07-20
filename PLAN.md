@@ -63,8 +63,9 @@ in the top bar = the stub settings menu), else→`AuthScreen`. `HomeViewModel` n
 `userEmail`+`signOut()`. **⚠️ If your Supabase project requires email confirmation**, sign-up
 won't create a live session until you click the emailed link — disable confirmation in
 Auth settings for faster dev testing. Uses the new `sb_publishable_` key; worked fine.
-**Not yet device-verified** by me (no emulator here) — the "kill & reopen still logged in"
-check is on you.
+**Device-verified by user:** sign-up → confirm → sign-in works. (Confirmation email redirects
+to `localhost:3000` which a phone can't open, but the account is confirmed anyway — see
+`supabase/README.md` "Email confirmation" for turning it off in dev.)
 
 ### [ ] Phase 3 · Data layer (offline-first)  — *Opus · high*  ⭐ backbone
 **Depends on:** 0, 1, 2.
