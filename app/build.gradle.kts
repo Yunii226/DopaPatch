@@ -74,6 +74,10 @@ dependencies {
     ksp(libs.room.compiler)
     implementation(libs.androidx.work.runtime)
     implementation(libs.lib.recur)
+    implementation(libs.supabase.storage)
+    implementation(libs.richtext.commonmark)
+    implementation(libs.richtext.ui.material3)
+    implementation(libs.coil.compose)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     testImplementation(libs.junit)

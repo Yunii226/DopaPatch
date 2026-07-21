@@ -194,12 +194,36 @@ singleInstance) + `AlarmService` (`foregroundServiceType=specialUse`, subtype "a
 survives-reboot / cancels-on-delete-or-complete are yours to run. On Android 14+ full-screen-intent
 may need the per-app toggle if the system doesn't auto-grant it to this exact-alarm app.
 
-### [ ] Phase 8 · Daily note editor  — *Opus · high*
+### [x] Phase 8 · Daily note editor  — *Opus · high*  ✅ DONE (needs on-device verify)
 **Depends on:** 3.
 - One Markdown doc per day. Toolbar over `BasicTextField` inserts Markdown around the selection: **bold**, *italic*, headings, bullet/number lists, checkboxes. Live/preview render via richtext-commonmark.
 - Insert images: gallery (`PickVisualMedia`) + camera (`TakePicture`+FileProvider) → upload to Supabase Storage `note-images` → embed `![](path)`; render with Coil.
 - Autosave to Room (debounced) → sync.
 **Done when:** text + formatting + an image persist for the day, survive relaunch, and sync. Ceiling: toolbar-Markdown, not WYSIWYG (documented).
+**Handoff note:** Deps added — `storage-kt` (bom), `richtext-commonmark`/`richtext-ui-material3 1.0.0-alpha02`,
+`coil-compose 2.7.0` (richtext-markdown renders markdown images through Coil2 itself).
+Toolbar logic is pure in `domain/markdown/MarkdownActions` (`applyMd(action,text,start,end)` →
+`MdEdit(text,selStart,selEnd)`; wrap actions toggle off when already wrapped, prefix actions
+prefix/unprefix every line touched by the selection; `insertMd` for images). **Italic uses `_`,
+not `*`,** so toggling italic inside `**bold**` doesn't eat one asterisk.
+`data/remote/NoteImageStore`: `upload(bytes)` → `"<uid>/<uuid>.jpg"` (first segment = uid, which
+storage RLS requires), `signedUrl(path)` 1h. `ui/note/NoteViewModel` holds the `TextFieldValue`
+(the toolbar needs the selection), loads the day once via `notes.observe(d).first()`, autosaves
+**debounced 700ms on `AppContainer.appScope`** (new: a container-level `SupervisorJob+IO` scope, so
+a save survives the ViewModel — `onCleared` flushes) then fires a quiet `sync.sync()`; `preview`
+rewrites `![](path)` → `![](signedUrl)` before rendering. `ui/note/NoteScreen` = toolbar row
+(B/I/H1/H2/•/1./☑ + 🖼 gallery + 📷 camera, all with `contentDescription`) over a `BasicTextField`,
+`RichText { Markdown(...) }` in preview. **New third tab "Note"** in `DayScreen` (FAB hidden there),
+so the note follows the same date bar. Manifest: `FileProvider` `${applicationId}.fileprovider` +
+`res/xml/file_paths.xml` (cache `camera/`) for `TakePicture`. `install(Storage)` in the client.
+**Ceilings (ponytail):** no `note_images` table rows and no orphan GC — the markdown path IS the
+reference, so images sync with the note text for free; deleting an image from the text leaves the
+object in the bucket. Uploads are full-size (no downscale). Note is read once per day, so a remote
+edit pulled mid-typing won't hot-swap under the cursor (safe direction).
+**Verified:** `:app:assembleDebug` + `:app:testDebugUnitTest` green — 24 tests (8 new markdown ones).
+**Not device-verified by me:** type → relaunch → text still there, image pick/capture → upload →
+renders in preview, and cross-device sync are yours to run. Needs `supabase/schema.sql` applied
+(it creates the private `note-images` bucket + per-uid policy).
 
 ### [ ] Phase 9 · Note export to `.md`  — *Sonnet · low*
 **Depends on:** 8.

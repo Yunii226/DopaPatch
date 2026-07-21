@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.dopapatch.data.local.TaskEntity
+import com.example.dopapatch.ui.note.NoteScreen
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -51,7 +52,7 @@ fun DayScreen(
         if (Build.VERSION.SDK_INT >= 33) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
-    var tab by remember { mutableStateOf(0) } // 0 = Checklist, 1 = Time-blocks
+    var tab by remember { mutableStateOf(0) } // 0 = Checklist, 1 = Time-blocks, 2 = Note
     var sheetOpen by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<TaskEntity?>(null) }
 
@@ -64,8 +65,10 @@ fun DayScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { editing = null; sheetOpen = true }) {
-                Text("+", style = MaterialTheme.typography.headlineSmall)
+            if (tab != 2) { // the note tab has its own toolbar; a "+" there means nothing
+                FloatingActionButton(onClick = { editing = null; sheetOpen = true }) {
+                    Text("+", style = MaterialTheme.typography.headlineSmall)
+                }
             }
         },
     ) { pad ->
@@ -73,13 +76,15 @@ fun DayScreen(
             TabRow(selectedTabIndex = tab) {
                 Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Checklist") })
                 Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Time-blocks") })
+                Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Note") })
             }
             DateBar(ui.date, onPrev = vm::prevDay, onNext = vm::nextDay, onToday = vm::goToday)
 
             val onEdit: (TaskEntity) -> Unit = { editing = it; sheetOpen = true }
             when (tab) {
                 0 -> ChecklistBody(ui, vm::toggle, vm::delete, onEdit)
-                else -> TimeBlocksBody(ui, vm::toggle, onEdit)
+                1 -> TimeBlocksBody(ui, vm::toggle, onEdit)
+                else -> NoteScreen(ui.date)
             }
         }
     }

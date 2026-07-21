@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.dopapatch.BuildConfig
 import com.example.dopapatch.data.alarm.AlarmScheduler
 import com.example.dopapatch.data.local.DopaPatchDb
+import com.example.dopapatch.data.remote.NoteImageStore
 import com.example.dopapatch.data.repository.CompletionRepository
 import com.example.dopapatch.data.repository.NoteRepository
 import com.example.dopapatch.data.repository.TaskRepository
@@ -15,6 +16,10 @@ import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /** Config sourced from BuildConfig (populated from local.properties). */
 data class AppConfig(
@@ -45,8 +50,17 @@ class AppContainer(context: Context) {
         createSupabaseClient(config.supabaseUrl, config.supabaseAnonKey) {
             install(Auth) // session auto-persists to SharedPreferences + auto-refreshes.
             install(Postgrest)
+            install(Storage)
         }
     }
+
+    /** Null when the backend isn't configured — the note editor then just hides its image buttons. */
+    val noteImageStore: NoteImageStore? by lazy {
+        if (config.isBackendConfigured) NoteImageStore(supabase, ::currentUserId) else null
+    }
+
+    /** Outlives any ViewModel — debounced note autosaves must survive the screen going away. */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val auth get() = supabase.auth
     fun currentUserId(): String? = auth.currentUserOrNull()?.id
