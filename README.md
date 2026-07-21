@@ -8,16 +8,10 @@ Kotlin · Jetpack Compose · Material 3 · Supabase · offline-first. Free tools
 
 ## Status
 
+This app is built in order to test the capacities of a personal custom AI system.
+
 Under active development by AI agents. See **[PLAN.md](PLAN.md)** for the phased roadmap
 and **[CLAUDE.md](CLAUDE.md)** for the stack, architecture, and working rules.
-
-- [x] **Phase 0** — Foundation: toolchain, manual DI, BuildConfig secrets
-- [ ] Phase 1 — Supabase schema & RLS
-- [ ] Phase 2 — Auth
-- [ ] Phase 3 — Offline-first data layer (Room ⇄ Supabase)
-- [ ] Phase 4 — Recurrence (RRULE) + time-blocks
-- [ ] Phase 5 — Checklist view · [ ] Phase 6 — Time-blocks view — **← MVP**
-- [ ] Phases 7–13 — Alarms · Daily notes · `.md` export · Voice · AI beautify · Widgets · Polish
 
 ## Stack
 
